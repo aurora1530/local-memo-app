@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Columns2, Eye, PanelLeft } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import type { Memo } from '../types/memo.d';
 
@@ -28,23 +28,6 @@ const MemoEditor = ({
   onShowListOnMobile,
 }: MemoEditorProps) => {
   const [markdownView, setMarkdownView] = useState<MarkdownView>('split');
-
-  const markdownSchema = useMemo(() => {
-    const tagNames = Array.from(
-      new Set([...(defaultSchema.tagNames ?? []), 'table', 'thead', 'tbody', 'tr', 'th', 'td'])
-    );
-    return {
-      ...defaultSchema,
-      tagNames,
-      attributes: {
-        ...(defaultSchema.attributes ?? {}),
-        code: [...((defaultSchema.attributes?.code as any[]) ?? []), ['className']],
-        span: [...((defaultSchema.attributes?.span as any[]) ?? []), ['className']],
-        th: [...((defaultSchema.attributes?.th as any[]) ?? []), ['className']],
-        td: [...((defaultSchema.attributes?.td as any[]) ?? []), ['className']],
-      },
-    };
-  }, []);
 
   useEffect(() => {
     setMarkdownView('split');
@@ -175,10 +158,7 @@ const MemoEditor = ({
                 <div className="min-h-[320px] rounded-xl border border-slate-200 bg-white px-4 py-3">
                   <article className="prose prose-slate max-w-none">
                     {memo.content.trim() ? (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[[rehypeSanitize, markdownSchema]]}
-                      >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
                         {memo.content}
                       </ReactMarkdown>
                     ) : (

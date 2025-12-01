@@ -18,34 +18,44 @@ const createBlankMemo = (): Memo => {
 
 export const useMemos = () => {
   const [memos, setMemosState] = useState<Memo[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setMemosState(getMemos());
+    setHydrated(true);
   }, []);
 
-  const persist = useCallback((next: Memo[]) => {
-    setMemosState(next);
-    setMemos(next);
-  }, []);
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      setMemos(memos);
+    }, 400);
+
+    return () => clearTimeout(handle);
+  }, [memos, hydrated]);
 
   const addMemo = useCallback((): Memo => {
     const newMemo = createBlankMemo();
-    persist([newMemo, ...memos]);
+    setMemosState((current) => [newMemo, ...current]);
     return newMemo;
-  }, [memos, persist]);
+  }, []);
 
-  const updateMemo = useCallback((id: string, changes: Partial<Omit<Memo, 'id' | 'createdAt' | 'updatedAt'>>): void => {
-    const updatedAt = new Date().toISOString();
-    const next = memos.map((memo) =>
-      memo.id === id ? { ...memo, ...changes, updatedAt } : memo
-    );
-    persist(next);
-  }, [memos, persist]);
+  const updateMemo = useCallback(
+    (id: string, changes: Partial<Omit<Memo, 'id' | 'createdAt' | 'updatedAt'>>): void => {
+      const updatedAt = new Date().toISOString();
+      setMemosState((current) =>
+        current.map((memo) => (memo.id === id ? { ...memo, ...changes, updatedAt } : memo))
+      );
+    },
+    []
+  );
 
   const deleteMemo = useCallback((id: string): void => {
-    const next = memos.filter((memo) => memo.id !== id);
-    persist(next);
-  }, [memos, persist]);
+    setMemosState((current) => current.filter((memo) => memo.id !== id));
+  }, []);
 
   return { memos, addMemo, updateMemo, deleteMemo };
 };
