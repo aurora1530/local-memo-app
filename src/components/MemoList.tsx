@@ -1,109 +1,161 @@
-// src/components/MemoList.tsx
-import React from 'react';
+import clsx from 'clsx';
+import { ArrowDownUp, Plus, Search, SquarePen } from 'lucide-react';
+import { useMemo } from 'react';
 import type { Memo } from '../types/memo.d';
 
-type SortBy = 'createdAt' | 'updatedAt' | 'title';
-type SortOrder = 'asc' | 'desc';
+export type SortBy = 'createdAt' | 'updatedAt' | 'title';
+export type SortOrder = 'asc' | 'desc';
 
 interface MemoListProps {
-  displayedMemos: Memo[];
+  memos: Memo[];
   selectedMemoId: string | null;
-  setSelectedMemoId: (id: string | null) => void;
-  handleNewMemo: () => void;
+  onSelectMemo: (id: string) => void;
+  onCreateMemo: () => void;
   searchTerm: string;
-  setSearchTerm: (term: string) => void;
+  onSearchTermChange: (value: string) => void;
   sortBy: SortBy;
-  setSortBy: (sortBy: SortBy) => void;
+  onSortByChange: (sort: SortBy) => void;
   sortOrder: SortOrder;
-  setSortOrder: (sortOrder: SortOrder) => void;
-  isMobile: boolean;
-  setShowList: (show: boolean) => void;
+  onSortOrderChange: (order: SortOrder) => void;
+  isLargeScreen: boolean;
+  onShowEditorOnMobile: () => void;
 }
 
-const MemoList: React.FC<MemoListProps> = ({
-  displayedMemos,
+const getExcerpt = (content: string) => {
+  if (!content) return '内容がありません';
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= 80) return normalized;
+  return `${normalized.slice(0, 80)}…`;
+};
+
+const MemoList = ({
+  memos,
   selectedMemoId,
-  setSelectedMemoId,
-  handleNewMemo,
+  onSelectMemo,
+  onCreateMemo,
   searchTerm,
-  setSearchTerm,
+  onSearchTermChange,
   sortBy,
-  setSortBy,
+  onSortByChange,
   sortOrder,
-  setSortOrder,
-  isMobile,
-  setShowList,
-}) => {
+  onSortOrderChange,
+  isLargeScreen,
+  onShowEditorOnMobile,
+}: MemoListProps) => {
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat('ja-JP', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+    []
+  );
+  const isSearching = searchTerm.trim().length > 0;
+
   return (
-    <div className="w-full md:w-1/3 lg:w-1/4 p-4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">メモアプリ</h1>
-        {isMobile && (
+    <aside className="flex h-full flex-col border-r border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Local Memo</p>
+          <p className="text-lg font-bold text-slate-900">メモ一覧</p>
+        </div>
+        {!isLargeScreen && (
           <button
-            onClick={() => setShowList(false)}
-            className="py-1 px-3 bg-gray-200 dark:bg-gray-700 rounded-md"
+            type="button"
+            onClick={onShowEditorOnMobile}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600"
           >
-            エディタへ
+            <SquarePen className="h-4 w-4" />
+            エディタ
           </button>
         )}
       </div>
-      <button
-        onClick={handleNewMemo}
-        className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors mb-4"
-      >
-        新しいメモを追加
-      </button>
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="メモを検索..."
-          className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-      <div className="flex items-center mb-4 space-x-2">
-        <select
-          className="flex-grow p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortBy)}
-        >
-          <option value="updatedAt">更新日時</option>
-          <option value="createdAt">作成日時</option>
-          <option value="title">タイトル</option>
-        </select>
+
+      <div className="border-b border-slate-200 px-4 py-4">
         <button
-          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          className="p-2 bg-gray-200 dark:bg-gray-700 rounded-md"
+          type="button"
+          onClick={onCreateMemo}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-indigo-500"
         >
-          {sortOrder === 'asc' ? '昇順' : '降順'}
+          <Plus className="h-4 w-4" />
+          新しいメモ
         </button>
-      </div>
-      <div>
-        {displayedMemos.length === 0 ? (
-          <p className="text-center text-gray-500 dark:text-gray-400">
-            {searchTerm ? '検索結果はありません。' : 'メモがありません。'}
-          </p>
-        ) : (
-          displayedMemos.map((memo) => (
-            <div
-              key={memo.id}
-              className={`p-3 mb-2 rounded-md cursor-pointer ${
-                selectedMemoId === memo.id
-                  ? 'bg-blue-200 dark:bg-blue-700'
-                  : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-              onClick={() => { setSelectedMemoId(memo.id); if (isMobile) setShowList(false); }}
+
+        <div className="mt-4 space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => onSearchTermChange(event.target.value)}
+              placeholder="タイトル・本文で検索"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:outline-none"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(event) => onSortByChange(event.target.value as SortBy)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
             >
-              <h3 className="font-semibold truncate">{memo.title || "無題のメモ"}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                {memo.content.substring(0, 50)}...
-              </p>
-            </div>
-          ))
+              <option value="updatedAt">更新日時</option>
+              <option value="createdAt">作成日時</option>
+              <option value="title">タイトル</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+            >
+              <ArrowDownUp className="h-4 w-4" />
+              {sortOrder === 'asc' ? '昇順' : '降順'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {memos.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-slate-500">
+            <p className="text-base font-semibold">
+              {isSearching ? '検索結果がありません' : 'メモがありません'}
+            </p>
+            <p className="text-sm">
+              {isSearching ? 'キーワードを変えるかクリアしてください。' : '「新しいメモ」を押して最初のメモを作成しましょう。'}
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {memos.map((memo) => {
+              const isActive = memo.id === selectedMemoId;
+              return (
+                <li key={memo.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectMemo(memo.id)}
+                    className={clsx(
+                      'flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors',
+                      isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                    )}
+                  >
+                    <span className="text-sm font-semibold text-slate-900">
+                      {memo.title?.trim() || '無題のメモ'}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      更新: {dateFormatter.format(new Date(memo.updatedAt))}
+                    </span>
+                    <p className="text-sm text-slate-600">
+                      {getExcerpt(memo.content)}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
-    </div>
+    </aside>
   );
 };
 

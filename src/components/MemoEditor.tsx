@@ -1,106 +1,214 @@
-// src/components/MemoEditor.tsx
-import React from 'react';
+import clsx from 'clsx';
+import { Columns2, Eye, PanelLeft } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
 import type { Memo } from '../types/memo.d';
 
+type MarkdownView = 'split' | 'edit' | 'preview';
+
 interface MemoEditorProps {
-  selectedMemo: Memo | null;
-  editingTitle: string;
-  setEditingTitle: (title: string) => void;
-  editingContent: string;
-  setEditingContent: (content: string) => void;
-  handleUpdateMemoProperty: (field: keyof Memo, value: any) => void;
-  handleDeleteMemo: () => void;
-  isMobile: boolean;
-  setShowList: (show: boolean) => void;
+  memo: Memo | null;
+  onUpdateTitle: (title: string) => void;
+  onUpdateContent: (content: string) => void;
+  onToggleMarkdown: (enabled: boolean) => void;
+  onDelete: () => void;
+  isLargeScreen: boolean;
+  onShowListOnMobile: () => void;
 }
 
-const MemoEditor: React.FC<MemoEditorProps> = ({
-  selectedMemo,
-  editingTitle,
-  setEditingTitle,
-  editingContent,
-  setEditingContent,
-  handleUpdateMemoProperty,
-  handleDeleteMemo,
-  isMobile,
-  setShowList,
-}) => {
-  return (
-    <div className="flex-1 p-4 overflow-y-auto">
-      {selectedMemo ? (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            {isMobile && (
-              <button
-                onClick={() => setShowList(true)}
-                className="py-1 px-3 bg-gray-200 dark:bg-gray-700 rounded-md mr-2"
-              >
-                リストへ
-              </button>
-            )}
-            <input
-              type="text"
-              className="flex-grow p-2 text-xl font-bold border rounded-md bg-transparent dark:border-gray-600 mr-2"
-              value={editingTitle}
-              onChange={(e) => setEditingTitle(e.target.value)}
-            />
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleUpdateMemoProperty('isMarkdown', false)}
-                className={`py-2 px-4 rounded-md ${
-                  !selectedMemo.isMarkdown ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'
-                }`}
-              >
-                Plaintext
-              </button>
-              <button
-                onClick={() => handleUpdateMemoProperty('isMarkdown', true)}
-                className={`py-2 px-4 rounded-md ${
-                  selectedMemo.isMarkdown ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'
-                }`}
-              >
-                Markdown
-              </button>
-            </div>
-          </div>
+const MemoEditor = ({
+  memo,
+  onUpdateTitle,
+  onUpdateContent,
+  onToggleMarkdown,
+  onDelete,
+  isLargeScreen,
+  onShowListOnMobile,
+}: MemoEditorProps) => {
+  const [markdownView, setMarkdownView] = useState<MarkdownView>('split');
 
-          {selectedMemo.isMarkdown ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-96">
-              <textarea
-                className="w-full h-full p-2 border rounded-md resize-none bg-transparent dark:border-gray-600"
-                value={editingContent}
-                onChange={(e) => setEditingContent(e.target.value)}
-                placeholder="Markdown形式で入力してください..."
-              />
-              <div className="w-full h-full p-2 border rounded-md bg-white dark:bg-gray-800 overflow-y-auto prose dark:prose-invert">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                  {editingContent}
-                </ReactMarkdown>
-              </div>
+  const markdownSchema = useMemo(() => {
+    const tagNames = Array.from(
+      new Set([...(defaultSchema.tagNames ?? []), 'table', 'thead', 'tbody', 'tr', 'th', 'td'])
+    );
+    return {
+      ...defaultSchema,
+      tagNames,
+      attributes: {
+        ...(defaultSchema.attributes ?? {}),
+        code: [...((defaultSchema.attributes?.code as any[]) ?? []), ['className']],
+        span: [...((defaultSchema.attributes?.span as any[]) ?? []), ['className']],
+        th: [...((defaultSchema.attributes?.th as any[]) ?? []), ['className']],
+        td: [...((defaultSchema.attributes?.td as any[]) ?? []), ['className']],
+      },
+    };
+  }, []);
+
+  useEffect(() => {
+    setMarkdownView('split');
+  }, [memo?.id]);
+
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat('ja-JP', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    []
+  );
+
+  if (!memo) {
+    return (
+      <section className="flex flex-1 flex-col items-center justify-center bg-white text-center text-slate-500">
+        <p className="text-lg font-semibold">メモを選択するか、新規作成してください。</p>
+        <p className="text-sm">左のリストからメモを選ぶと内容が表示されます。</p>
+      </section>
+    );
+  }
+
+  const showEditor = markdownView !== 'preview';
+  const showPreview = markdownView !== 'edit';
+
+  return (
+    <section className="flex h-full flex-col bg-white">
+      <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4">
+        {!isLargeScreen && (
+          <button
+            type="button"
+            onClick={onShowListOnMobile}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-600"
+          >
+            <PanelLeft className="h-4 w-4" />
+            一覧へ
+          </button>
+        )}
+        <input
+          type="text"
+          value={memo.title}
+          onChange={(event) => onUpdateTitle(event.target.value)}
+          placeholder="タイトル"
+          className="min-w-0 flex-1 rounded-lg border border-transparent bg-slate-50 px-4 py-2 text-lg font-semibold text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
+        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleMarkdown(false)}
+            className={clsx(
+              'rounded-lg px-3 py-2 text-sm font-medium',
+              memo.isMarkdown ? 'bg-slate-100 text-slate-500' : 'bg-indigo-600 text-white'
+            )}
+          >
+            Plaintext
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleMarkdown(true)}
+            className={clsx(
+              'rounded-lg px-3 py-2 text-sm font-medium',
+              memo.isMarkdown ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+            )}
+          >
+            Markdown
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <p>作成: {dateFormatter.format(new Date(memo.createdAt))}</p>
+          <p>更新: {dateFormatter.format(new Date(memo.updatedAt))}</p>
+        </div>
+
+        {memo.isMarkdown && (
+          <div className="mt-3 flex items-center justify-end gap-2 text-sm text-slate-600">
+            <button
+              type="button"
+              onClick={() => setMarkdownView('edit')}
+              className={clsx(
+                'rounded-md px-3 py-1',
+                markdownView === 'edit' ? 'bg-slate-200 font-semibold' : 'hover:bg-slate-100'
+              )}
+            >
+              編集
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarkdownView('preview')}
+              className={clsx(
+                'inline-flex items-center gap-1 rounded-md px-3 py-1',
+                markdownView === 'preview' ? 'bg-slate-200 font-semibold' : 'hover:bg-slate-100'
+              )}
+            >
+              <Eye className="h-4 w-4" /> プレビュー
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarkdownView('split')}
+              className={clsx(
+                'inline-flex items-center gap-1 rounded-md px-3 py-1',
+                markdownView === 'split' ? 'bg-slate-200 font-semibold' : 'hover:bg-slate-100'
+              )}
+            >
+              <Columns2 className="h-4 w-4" /> 2分割
+            </button>
+          </div>
+        )}
+
+        <div className="mt-4 min-h-[320px] space-y-4">
+          {memo.isMarkdown ? (
+            <div
+              className={clsx('flex flex-col gap-4', {
+                'md:grid md:grid-cols-2': showEditor && showPreview,
+              })}
+            >
+              {showEditor && (
+                <textarea
+                  value={memo.content}
+                  onChange={(event) => onUpdateContent(event.target.value)}
+                  className="h-full min-h-[320px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
+                  placeholder="Markdownでメモを記述してください"
+                />
+              )}
+              {showPreview && (
+                <div className="min-h-[320px] rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  <article className="prose prose-slate max-w-none">
+                    {memo.content.trim() ? (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+                      >
+                        {memo.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <p className="text-sm text-slate-400">プレビューする内容がありません。</p>
+                    )}
+                  </article>
+                </div>
+              )}
             </div>
           ) : (
             <textarea
-              className="w-full h-96 p-2 border rounded-md resize-none bg-transparent dark:border-gray-600"
-              value={editingContent}
-              onChange={(e) => setEditingContent(e.target.value)}
-              placeholder="プレーンテキストで入力してください..."
+              value={memo.content}
+              onChange={(event) => onUpdateContent(event.target.value)}
+              className="min-h-[480px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
+              placeholder="テキストでシンプルにメモを書けます"
             />
           )}
-          
-          <button
-            onClick={handleDeleteMemo}
-            className="mt-4 py-2 px-4 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-          >
-            メモを削除
-          </button>
         </div>
-      ) : (
-        <p className="text-center text-gray-500 dark:text-gray-400 mt-20">メモを選択してください、または新しいメモを作成してください。</p>
-      )}
-    </div>
+      </div>
+
+      <div className="border-t border-slate-200 px-6 py-4 text-right">
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+        >
+          このメモを削除
+        </button>
+      </div>
+    </section>
   );
 };
 
