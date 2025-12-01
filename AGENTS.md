@@ -35,3 +35,7 @@ localstorageにデータを保存する、シンプルなメモアプリケー�
 - フロントエンドフレームワーク: vite
 - スタイル： tailwindcss
 - デプロイ： GitHub Pages
+
+## AI への指示事項
+
+1. 適切な修正単位でcommitをしてください。その際、conventional commitの形式に従い、かつ日本語で記述してください。
