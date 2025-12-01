@@ -156,7 +156,7 @@ const MemoEditor = ({
               )}
               {showPreview && (
                 <div className="min-h-[320px] rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <article className="prose prose-slate max-w-none">
+                  <article className="markdown-body">
                     {memo.content.trim() ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
                         {memo.content}
