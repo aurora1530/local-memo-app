@@ -1,4 +1,3 @@
-// src/utils/localStorage.ts
 import type { Memo } from '../types/memo.d';
 
 const MEMO_STORAGE_KEY = 'local-memo-app-memos';

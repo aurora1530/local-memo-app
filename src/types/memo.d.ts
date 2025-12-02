@@ -1,4 +1,3 @@
-// src/types/memo.d.ts
 export interface Memo {
   id: string;
   title: string;
