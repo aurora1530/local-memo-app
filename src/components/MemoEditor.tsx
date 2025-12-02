@@ -1,10 +1,11 @@
 import clsx from 'clsx';
 import { Columns2, Eye, PanelLeft } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import type { Memo } from '../types/memo.d';
+import { useDebounce } from '../hooks/useDebounce';
 
 type MarkdownView = 'split' | 'edit' | 'preview';
 
@@ -28,10 +29,47 @@ const MemoEditor = ({
   onShowListOnMobile,
 }: MemoEditorProps) => {
   const [markdownView, setMarkdownView] = useState<MarkdownView>('split');
+  const [titleInput, setTitleInput] = useState(memo?.title ?? '');
+  const [contentInput, setContentInput] = useState(memo?.content ?? '');
+  const debouncedTitle = useDebounce(titleInput, 300);
+  const debouncedContent = useDebounce(contentInput, 300);
+  const onUpdateTitleRef = useRef(onUpdateTitle);
+  const onUpdateContentRef = useRef(onUpdateContent);
+
+  useEffect(() => {
+    onUpdateTitleRef.current = onUpdateTitle;
+  }, [onUpdateTitle]);
+
+  useEffect(() => {
+    onUpdateContentRef.current = onUpdateContent;
+  }, [onUpdateContent]);
 
   useEffect(() => {
     setMarkdownView('split');
   }, [memo?.id]);
+
+  useEffect(() => {
+    if (!memo) {
+      setTitleInput('');
+      setContentInput('');
+      return;
+    }
+
+    setTitleInput(memo.title);
+    setContentInput(memo.content);
+  }, [memo?.id, memo?.title, memo?.content]);
+
+  useEffect(() => {
+    if (!memo) return;
+    if (debouncedTitle === memo.title) return;
+    onUpdateTitleRef.current(debouncedTitle);
+  }, [debouncedTitle, memo?.title, memo?.id]);
+
+  useEffect(() => {
+    if (!memo) return;
+    if (debouncedContent === memo.content) return;
+    onUpdateContentRef.current(debouncedContent);
+  }, [debouncedContent, memo?.content, memo?.id]);
 
   const dateFormatter = useMemo(
     () =>
@@ -69,8 +107,8 @@ const MemoEditor = ({
         )}
         <input
           type="text"
-          value={memo.title}
-          onChange={(event) => onUpdateTitle(event.target.value)}
+          value={titleInput}
+          onChange={(event) => setTitleInput(event.target.value)}
           placeholder="タイトル"
           className="min-w-0 flex-1 rounded-lg border border-transparent bg-slate-50 px-4 py-2 text-lg font-semibold text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
         />
@@ -148,8 +186,8 @@ const MemoEditor = ({
             >
               {showEditor && (
                 <textarea
-                  value={memo.content}
-                  onChange={(event) => onUpdateContent(event.target.value)}
+                  value={contentInput}
+                  onChange={(event) => setContentInput(event.target.value)}
                   className="h-full min-h-[320px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
                   placeholder="Markdownでメモを記述してください"
                 />
@@ -157,9 +195,9 @@ const MemoEditor = ({
               {showPreview && (
                 <div className="min-h-[320px] rounded-xl border border-slate-200 bg-white px-4 py-3">
                   <article className="markdown-body">
-                    {memo.content.trim() ? (
+                    {contentInput.trim() ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                        {memo.content}
+                        {contentInput}
                       </ReactMarkdown>
                     ) : (
                       <p className="text-sm text-slate-400">プレビューする内容がありません。</p>
@@ -170,8 +208,8 @@ const MemoEditor = ({
             </div>
           ) : (
             <textarea
-              value={memo.content}
-              onChange={(event) => onUpdateContent(event.target.value)}
+              value={contentInput}
+              onChange={(event) => setContentInput(event.target.value)}
               className="min-h-[480px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 focus:border-indigo-400 focus:bg-white focus:outline-none"
               placeholder="テキストでシンプルにメモを書けます"
             />
